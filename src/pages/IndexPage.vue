@@ -78,30 +78,31 @@
       </div>
       <div class="button-holders">
         <q-btn
-          label="Hang up Call"
+          v-if="canHangUpCall"
           @click="hangupCall"
-          :disable="!canHangUpCall"
           color="negative"
+          icon="phone_disabled"
         />
+
         <q-btn
-          label="Accept Call"
+          v-if="!canHangUpCall"
           @click="acceptCall"
           :disable="!canAcceptCall"
           :class="{ shake: canAcceptCall }"
           color="positive"
+          icon="phone_forwarded"
         />
 
         <q-btn
-          label="Start Video"
-          @click="startVideo"
-          :disable="!canStartVideo"
-          color="info"
+          @click="toggleVideo"
+          :icon="videoStreaming ? 'videocam' : 'videocam_off'"
+          color="primary"
         />
+
         <q-btn
-          label="Stop Video"
-          @click="stopVideo"
-          :disable="!canStopVideo"
-          color="dark"
+          @click="toggleMicrophone"
+          :icon="muted ? 'mic_off' : 'mic'"
+          color="primary"
         />
       </div>
     </div>
@@ -144,6 +145,8 @@ export default defineComponent({
     const remoteVideosGallery = ref(null);
     const name = ref(null);
     const teamsLink = ref(null);
+    const muted = ref(false);
+    const videoStreaming = ref(true);
 
     // const userAccessToken = ref(
     //   "eyJhbGciOiJSUzI1NiIsImtpZCI6IjVFODQ4MjE0Qzc3MDczQUU1QzJCREU1Q0NENTQ0ODlEREYyQzRDODQiLCJ4NXQiOiJYb1NDRk1kd2M2NWNLOTVjelZSSW5kOHNUSVEiLCJ0eXAiOiJKV1QifQ.eyJza3lwZWlkIjoiYWNzOmQ2OWYyMzhhLTQwYTUtNGU4Ny1iYWZhLWZkMmY1ZGY1ODdmNF8wMDAwMDAxYy05YzZlLTc3N2MtOTE4ZS1hZjNhMGQwMGQyZjgiLCJzY3AiOjE3OTIsImNzaSI6IjE3MDA3NDkxNjkiLCJleHAiOjE3MDA4MzU1NjksInJnbiI6ImVtZWEiLCJhY3NTY29wZSI6ImNoYXQsdm9pcCIsInJlc291cmNlSWQiOiJkNjlmMjM4YS00MGE1LTRlODctYmFmYS1mZDJmNWRmNTg3ZjQiLCJyZXNvdXJjZUxvY2F0aW9uIjoiZXVyb3BlIiwiaWF0IjoxNzAwNzQ5MTY5fQ.ErqFNKVPOb9rw-KPULNyugnoNLVFSDrjOqREsI1TFFVzaKCXZUfQ9MUFS_eu8_eXEhPwhOFylemSK4seu54MY8WlAXcd6-i5tJmlTmTiCk0TzFMgmTfWccVzf6ueZGFjD8jJR11QNmUE4jz28zR6njTpFXGqe0EOG6zXD--w8g5LNM30iJke4wMliXiPZ_pzbZ--FJm0kyxY57pDtze7Qr75CGs-jtvaONSebzqqb49dB_8cWhMiTXefGwkVsdy6VwlIGsEO8-ja_l8rpiwKTPcBPaYdkcW0FPdHkg7gm3G9Wx7qypICSrGj7-xptBx8JqphKvuHOSj-AkyoEQU9yg"
@@ -447,27 +450,50 @@ export default defineComponent({
       }
     }
 
-    const startVideo = async () => {
+    async function toggleVideo() {
       try {
-        const stream = await createLocalVideoStream();
-        if (stream && call) {
-          await call.startVideo(stream);
-          localVideoStream = stream;
-        }
-      } catch (error) {
-        console.error(error);
-      }
-    };
+        // If there's no call or the local video stream is not set up, exit the function
+        if (!call) return;
 
-    const stopVideo = async () => {
-      try {
-        if (localVideoStream && call) {
+        // If the local video stream is already active, stop the video
+        if (localVideoStream) {
           await call.stopVideo(localVideoStream);
+          localVideoStream = null; // Clear the local video stream reference
+          console.log("Video stopped.");
+          videoStreaming.value = false;
+        } else {
+          // Otherwise, start the video
+          const stream = await createLocalVideoStream();
+          if (stream) {
+            await call.startVideo(stream);
+            localVideoStream = stream; // Store the local video stream reference
+            console.log("Video started.");
+            videoStreaming.value = true;
+          }
         }
       } catch (error) {
-        console.error(error);
+        console.error("Failed to toggle the video:", error);
       }
-    };
+    }
+
+    async function toggleMicrophone() {
+      if (!call) return; // Exit if there's no call
+
+      try {
+        if (call.isMuted) {
+          await call.unmute();
+          muted.value = false;
+          console.log("Microphone is unmuted.");
+        } else {
+          await call.mute();
+          muted.value = true;
+          console.log("Microphone is muted.");
+        }
+      } catch (error) {
+        console.error("Failed to toggle the microphone:", error);
+      }
+    }
+
     // Other methods like hangupCall, acceptCall, etc.
 
     const logIn = async () => {
@@ -585,8 +611,7 @@ export default defineComponent({
       startCall,
       hangupCall,
       acceptCall,
-      startVideo,
-      stopVideo,
+      toggleVideo,
       localVideoContainer,
       remoteVideosGallery,
       name,
@@ -595,6 +620,9 @@ export default defineComponent({
       users,
       teamsLink,
       calleeTeamsUserId,
+      toggleMicrophone,
+      muted,
+      videoStreaming,
       // Other methods
     };
   },

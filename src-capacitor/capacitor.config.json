@@ -1,0 +1,9 @@
+{
+  "appId": "org.azurecommu",
+  "appName": "Azure Communication",
+  "webDir": "www",
+  "server": {
+    "androidScheme": "https",
+    "url": "http://192.168.1.3:9500"
+  }
+}

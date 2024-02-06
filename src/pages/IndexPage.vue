@@ -17,6 +17,7 @@
         label="Your name"
         style="margin-bottom: 1em; width: 500px"
         class="login-input"
+        @keyup.enter="logIn"
       />
       <q-btn class="login" label="Login" @click="logIn" color="primary" />
     </div>
@@ -41,19 +42,6 @@
           label="Enter callee's Azure Communication Services user identity in format: '8:acs:resourceId_userId'"
           style="margin-bottom: 1em; width: 500px"
         /> -->
-
-        <!-- <q-btn
-          label="Start Video"
-          @click="startVideo"
-          :disable="!canStartVideo"
-          color="info"
-        />
-        <q-btn
-          label="Stop Video"
-          @click="stopVideo"
-          :disable="!canStopVideo"
-          color="dark"
-        /> -->
       </div>
       <h6>Call users:</h6>
       <table>
@@ -69,107 +57,6 @@
               <td>{{ user.name }}</td>
               <td>
                 <button class="call-button" @click="startCall(user.identity)">
-                  Call
-                </button>
-              </td>
-            </tr>
-          </template>
-
-          <template v-if="userTeamsAccessToken !== ''">
-            <tr>
-              <td>
-                <q-input
-                  filled
-                  v-model="calleeTeamsUserIdVelimir"
-                  label="Teams User Id - Velimir"
-                  style="margin-bottom: 1em; width: 500px"
-                  class="teams-input"
-                />
-              </td>
-              <td>
-                <button
-                  class="call-button"
-                  @click="startCallTeams(calleeTeamsUserIdVelimir)"
-                >
-                  Call
-                </button>
-              </td>
-            </tr>
-            <tr>
-              <td>
-                <q-input
-                  filled
-                  v-model="calleeTeamsUserIdPetar"
-                  label="Teams User Id - Petar"
-                  style="margin-bottom: 1em; width: 500px"
-                  class="teams-input"
-                />
-              </td>
-              <td>
-                <button
-                  class="call-button"
-                  @click="startCallTeams(calleeTeamsUserIdPetar)"
-                >
-                  Call
-                </button>
-              </td>
-            </tr>
-
-            <tr>
-              <td>
-                <q-input
-                  filled
-                  v-model="calleeTeamsUserIdNino"
-                  label="Teams User Id - Nino"
-                  style="margin-bottom: 1em; width: 500px"
-                  class="teams-input"
-                />
-              </td>
-              <td>
-                <button
-                  class="call-button"
-                  @click="startCallTeams(calleeTeamsUserIdNino)"
-                >
-                  Call
-                </button>
-              </td>
-            </tr>
-
-            <tr>
-              <td>
-                <q-input
-                  filled
-                  v-model="calleeTeamsUserIdKarlo"
-                  label="Teams User Id - Karlo"
-                  style="margin-bottom: 1em; width: 500px"
-                  class="teams-input"
-                />
-              </td>
-              <td>
-                <button
-                  class="call-button"
-                  @click="startCallTeams(calleeTeamsUserIdKarlo)"
-                >
-                  Call
-                </button>
-              </td>
-            </tr>
-
-            <tr>
-              <td>
-                <q-input
-                  filled
-                  v-model="calleeTeamsUserId"
-                  label="Teams User Id - Martin"
-                  style="margin-bottom: 1em; width: 500px"
-                  class="teams-input"
-                />
-              </td>
-              <td>
-                <button
-                  class="call-button"
-                  @click="startCallTeams(calleeTeamsUserId)"
-                >
                   Call
                 </button>
               </td>
@@ -202,6 +89,19 @@
           :disable="!canAcceptCall"
           :class="{ shake: canAcceptCall }"
           color="positive"
+        />
+
+        <q-btn
+          label="Start Video"
+          @click="startVideo"
+          :disable="!canStartVideo"
+          color="info"
+        />
+        <q-btn
+          label="Stop Video"
+          @click="stopVideo"
+          :disable="!canStopVideo"
+          color="dark"
         />
       </div>
     </div>
@@ -528,43 +428,6 @@ export default defineComponent({
       }
     }
 
-    async function startCallTeams(calleeTeamsUserId) {
-      try {
-        const localVideoStream = await createLocalVideoStream();
-        const videoOptions = localVideoStream
-          ? { localVideoStreams: [localVideoStream] }
-          : undefined;
-        console.log("Callee Teams User Id: ", calleeTeamsUserId);
-        call = callAgent.startCall(
-          [{ microsoftTeamsUserId: calleeTeamsUserId.trim() }],
-          { videoOptions }
-        );
-
-        // Subscribe to the call's properties and events.
-        console.log(`Call Id: ${call.id}`);
-        subscribeToCall(call);
-      } catch (error) {
-        console.error(error);
-      }
-    }
-
-    async function joinTeams(teamsLink) {
-      try {
-        console.log("Teams Link: ", teamsLink);
-
-        const localVideoStream = await createLocalVideoStream();
-        const videoOptions = localVideoStream
-          ? { localVideoStreams: [localVideoStream] }
-          : undefined;
-        call = callAgent.join({ meetingLink: teamsLink }, { videoOptions }); //videoOptions
-        // Subscribe to the call's properties and events.
-        console.log(`Call Id: ${call.id}`);
-        subscribeToCall(call);
-      } catch (error) {
-        console.error(error);
-      }
-    }
-
     async function hangupCall() {
       await call.hangUp();
     }
@@ -598,7 +461,7 @@ export default defineComponent({
 
     const stopVideo = async () => {
       try {
-        if (localVideoStream.value && call) {
+        if (localVideoStream && call) {
           await call.stopVideo(localVideoStream);
         }
       } catch (error) {
@@ -731,8 +594,6 @@ export default defineComponent({
       logInTeams,
       users,
       teamsLink,
-      joinTeams,
-      startCallTeams,
       calleeTeamsUserId,
       // Other methods
     };
@@ -851,6 +712,7 @@ tr:hover {
   .page {
     min-width: 100%;
     padding: 16px;
+    width: 80%;
   }
 
   .remoteVideo {

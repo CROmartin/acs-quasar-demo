@@ -348,6 +348,13 @@ export default defineComponent({
           console.log(`Call state changed: ${callInstance.state}`);
 
           if (callInstance.state === "Connected") {
+            /// set microphone muted or not based on muted value
+            if (muted.value && !call.isMuted) {
+              await call.mute();
+            } else if (!muted.value && call.isMuted) {
+              await call.unmute();
+            }
+
             canAcceptCall.value = false;
 
             isCallConnected.value = true;
@@ -414,10 +421,17 @@ export default defineComponent({
 
     async function startCall(calleeAcsUserId) {
       try {
-        const localVideoStream = await createLocalVideoStream();
-        const videoOptions = localVideoStream
-          ? { localVideoStreams: [localVideoStream] }
-          : undefined;
+        let videoOptions = undefined;
+
+        // Check if videoStreaming is true before starting the call
+        if (videoStreaming.value) {
+          const stream = await createLocalVideoStream();
+          if (stream) {
+            videoOptions = { localVideoStreams: [stream] };
+            localVideoStream = stream; // Store the local video stream reference
+          }
+        }
+
         call = callAgent.startCall(
           [{ communicationUserId: calleeAcsUserId.trim() }],
           { videoOptions }
@@ -427,7 +441,7 @@ export default defineComponent({
         console.log(`Call Id: ${call.id}`);
         subscribeToCall(call);
       } catch (error) {
-        console.error(error);
+        console.error("Error starting call:", error);
       }
     }
 
@@ -437,16 +451,24 @@ export default defineComponent({
 
     async function acceptCall() {
       try {
-        const localVideoStream = await createLocalVideoStream();
-        const videoOptions = localVideoStream
-          ? { localVideoStreams: [localVideoStream] }
-          : undefined;
+        let videoOptions = undefined;
+
+        // Only create and add the local video stream if videoStreaming is true
+        if (videoStreaming.value) {
+          const stream = await createLocalVideoStream();
+          if (stream) {
+            videoOptions = { localVideoStreams: [stream] };
+            localVideoStream = stream; // Store the local video stream reference for potential future use
+          }
+        }
+
+        // Accept the incoming call with the conditional video options
         call = await incomingCall.accept({ videoOptions });
 
         // Subscribe to the call's properties and events.
         subscribeToCall(call);
       } catch (error) {
-        console.error(error);
+        console.error("Error accepting call:", error);
       }
     }
 
@@ -454,13 +476,13 @@ export default defineComponent({
       try {
         // If there's no call or the local video stream is not set up, exit the function
         if (!call) return;
+        videoStreaming.value = !videoStreaming.value;
 
         // If the local video stream is already active, stop the video
         if (localVideoStream) {
           await call.stopVideo(localVideoStream);
           localVideoStream = null; // Clear the local video stream reference
           console.log("Video stopped.");
-          videoStreaming.value = false;
         } else {
           // Otherwise, start the video
           const stream = await createLocalVideoStream();
@@ -468,7 +490,6 @@ export default defineComponent({
             await call.startVideo(stream);
             localVideoStream = stream; // Store the local video stream reference
             console.log("Video started.");
-            videoStreaming.value = true;
           }
         }
       } catch (error) {
@@ -478,15 +499,15 @@ export default defineComponent({
 
     async function toggleMicrophone() {
       if (!call) return; // Exit if there's no call
+      muted.value = !muted.value;
 
       try {
         if (call.isMuted) {
           await call.unmute();
-          muted.value = false;
           console.log("Microphone is unmuted.");
         } else {
           await call.mute();
-          muted.value = true;
+
           console.log("Microphone is muted.");
         }
       } catch (error) {
@@ -738,9 +759,10 @@ tr:hover {
 
 @media (max-width: 420px) {
   .page {
-    min-width: 100%;
+    min-width: 95%;
+
     padding: 16px;
-    width: 80%;
+    width: 95%;
   }
 
   .remoteVideo {

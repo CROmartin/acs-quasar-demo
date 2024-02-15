@@ -56,7 +56,11 @@
             <tr v-for="user in users" :key="user.identity">
               <td>{{ user.name }}</td>
               <td>
-                <button class="call-button" @click="startCall(user.identity)">
+                <!-- <button class="call-button" @click="startCall(user.identity)"> -->
+                <button
+                  class="call-button"
+                  @click="callCompositeFunction(user)"
+                >
                   Call
                 </button>
               </td>
@@ -68,15 +72,21 @@
       <div v-if="isCallConnected" style="color: #13bb13">
         Call is connected!
       </div>
-      <!-- <div v-if="showRemoteVideos" style="width: 40%"> -->
-      <div class="remoteVideo" ref="remoteVideosGallery">
+
+      <!-- <div class="remoteVideo" ref="remoteVideosGallery">
         Remote participants' video streams:
       </div>
-      <!-- <div v-if="showLocalVideo" style="width: 30%" ref="localVideoContainer"> -->
+
       <div class="localVideo" ref="localVideoContainer">
         Local video stream:
-      </div>
-      <div class="button-holders">
+      </div> -->
+      <div
+        id="video-call-container"
+        ref="compositeRef"
+        style="height: 50vh"
+      ></div>
+
+      <!-- <div class="button-holders">
         <q-btn
           v-if="canHangUpCall"
           @click="hangupCall"
@@ -104,7 +114,7 @@
           :icon="muted ? 'mic_off' : 'mic'"
           color="primary"
         />
-      </div>
+      </div> -->
     </div>
   </q-page>
 </template>
@@ -122,7 +132,8 @@ import { AzureLogger, setLogLevel } from "@azure/logger";
 export default defineComponent({
   name: "IndexPage",
   setup() {
-    // const userAccessToken = ref("");
+    const compositeRef = ref(null);
+
     const calleeAcsUserId = ref("");
     const calleeTeamsUserId = ref("68818544-44cb-40e1-ba3a-d459a5cb4fc5");
     const calleeTeamsUserIdVelimir = ref(
@@ -153,6 +164,8 @@ export default defineComponent({
     // );
 
     const userAccessToken = ref("");
+    const userIndetity = ref("");
+
     const userTeamsAccessToken = ref("");
 
     let callAgent;
@@ -538,11 +551,32 @@ export default defineComponent({
         const data = await response.json();
         console.log("userAccessToken: ", data.token);
         userAccessToken.value = data.token; // Save the token
+        userIndetity.value = data.identity;
         console.log("User access token: ", userAccessToken.value);
-        initializeCallAgent();
+        console.log("User id: ", userIndetity.value);
+
+        const callClient = new CallClient();
+        deviceManager = await callClient.getDeviceManager();
+        await deviceManager.askDevicePermission({ video: true });
+        await deviceManager.askDevicePermission({ audio: true });
+
+        // initializeCallAgent();
       } catch (error) {
         console.error("Error during login:", error);
       }
+    };
+
+    const callCompositeFunction = async (user) => {
+      console.log("Ref: ", compositeRef.value);
+      const callAdapter = await callComposite.loadCallComposite(
+        {
+          groupId: "d0217e30-76f3-45c7-8ef0-c37252745172",
+          displayName: name.value,
+          userId: { communicationUserId: userIndetity.value },
+          token: userAccessToken.value,
+        },
+        compositeRef.value
+      );
     };
 
     const logInTeams = async () => {
@@ -644,6 +678,8 @@ export default defineComponent({
       toggleMicrophone,
       muted,
       videoStreaming,
+      callCompositeFunction,
+      compositeRef,
       // Other methods
     };
   },
